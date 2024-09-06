@@ -108,6 +108,7 @@ import math
 
 from PIL import Image, ImageDraw
 import pandas as pd
+from scipy.spatial import cKDTree
 
 _MAGIC_RAND = np.uint64(2654435761)
 _supported_databases = ('bsc5', 'hip_main', 'tyc_main')
@@ -269,12 +270,42 @@ def _find_centroid_matches(image_centroids, catalog_centroids, r):
     returns Kx2 list of matches, first colum is index in image_centroids,
         second column is index in catalog_centroids
     """
-    dists = cdist(image_centroids, catalog_centroids)
-    matches = np.argwhere(dists < r)
-    # Make sure we only have unique 1-1 matches
-    matches = matches[np.unique(matches[:, 0], return_index=True)[1], :]
-    matches = matches[np.unique(matches[:, 1], return_index=True)[1], :]
-    return matches
+    # dists = cdist(image_centroids, catalog_centroids)
+    # matches = np.argwhere(dists < r)
+    # # Make sure we only have unique 1-1 matches
+    # matches = matches[np.unique(matches[:, 0], return_index=True)[1], :]
+    # matches = matches[np.unique(matches[:, 1], return_index=True)[1], :]
+    
+    # return matches
+
+    # Create KD-Trees for efficient spatial querying
+    image_tree = cKDTree(image_centroids)
+    catalog_tree = cKDTree(catalog_centroids)
+
+    # Find all pairs of points within distance r
+    pairs = image_tree.query_ball_tree(catalog_tree, r)
+
+    # Create lists to store matches
+    image_indices = []
+    catalog_indices = []
+
+    # Process pairs to ensure 1-1 matching
+    used_image = set()
+    used_catalog = set()
+
+    for i, matches in enumerate(pairs):
+        if matches and i not in used_image:
+            for match in matches:
+                if match not in used_catalog:
+                    image_indices.append(i)
+                    catalog_indices.append(match)
+                    used_image.add(i)
+                    used_catalog.add(match)
+                    break
+
+    # Convert to numpy array and return
+    return np.column_stack((image_indices, catalog_indices))
+
 
 class Tetra3():
     """Solve star patterns and manage databases.
