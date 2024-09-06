@@ -107,6 +107,7 @@ from scipy.spatial.distance import pdist, cdist
 import math
 
 from PIL import Image, ImageDraw
+import pandas as pd
 
 _MAGIC_RAND = np.uint64(2654435761)
 _supported_databases = ('bsc5', 'hip_main', 'tyc_main')
@@ -1442,7 +1443,9 @@ class Tetra3():
             hash_code_list = np.array(list(code for code in itertools.product(*hash_code_range)))
             # Make sure we have unique ascending codes
             hash_code_list = np.sort(hash_code_list, axis=1)
-            hash_code_list = np.unique(hash_code_list, axis=0)
+            # hash_code_list = np.unique(hash_code_list, axis=0) #TODO: Maybe replace with Pandas function to improve performance `df = pd.DataFrame(hash_code_list), unique_hash_codes = df.drop_duplicates().to_numpy()`
+            df = pd.DataFrame(hash_code_list)
+            hash_code_list = df.drop_duplicates.to_numpy()
 
             # Calculate hash index for each
             hash_indices = _key_to_index(hash_code_list, p_bins, self.pattern_catalog.shape[0])
