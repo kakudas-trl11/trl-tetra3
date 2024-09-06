@@ -126,14 +126,29 @@ def _get_table_index_from_hash(hash_index, table):
     """Gets from table with quadratic probing, returns list of all possibly matching indices."""
     max_ind = np.uint64(table.shape[0])
     hash_index = np.uint64(hash_index)
-    found = []
-    for c in itertools.count():
-        c = np.uint64(c)
-        i = (hash_index + c*c) % max_ind
-        if all(table[i, :] == 0):
-            return np.array(found)
+    
+    found = np.empty(1000, dtype=np.uint64)
+    found_size = 0
+
+    for c in range(max_ind):
+        i = (hash_index + c * c) % max_ind
+        if np.all(table[i,:] == 0):
+            return found[:found_size]
         else:
-            found.append(i)
+            found[found_size] = i
+            found_size += 1
+    
+    return found[:found_size]
+
+    
+    # found = []
+    # for c in itertools.count():
+    #     c = np.uint64(c)
+    #     i = (hash_index + c*c) % max_ind
+    #     if all(table[i, :] == 0):
+    #         return np.array(found)
+    #     else:
+    #         found.append(i)
 
 def _key_to_index(key, bin_factor, max_index):
     """Get hash index for a given key. Can be length p list or n by p array."""
