@@ -107,7 +107,6 @@ from scipy.spatial.distance import pdist, cdist
 import math
 
 from PIL import Image, ImageDraw
-import pandas as pd
 from scipy.spatial import cKDTree
 
 _MAGIC_RAND = np.uint64(2654435761)
@@ -124,33 +123,19 @@ def _insert_at_index(pattern, hash_index, table):
             table[i, :] = pattern
             return i
 
-def _get_table_index_from_hash(hash_index, table):
+def _get_table_index_from_hash(hash_index, table): #TODO: does found contain solved hash, if not change to return solved hash
     """Gets from table with quadratic probing, returns list of all possibly matching indices."""
     max_ind = np.uint64(table.shape[0])
     hash_index = np.uint64(hash_index)
-    
-    found = np.empty(1000, dtype=np.uint64)
-    found_size = 0
 
-    for c in range(max_ind):
-        i = (hash_index + c * c) % max_ind
-        if np.all(table[i,:] == 0):
-            return found[:found_size]
+    found = []
+    for c in itertools.count():
+        c = np.uint64(c)
+        i = (hash_index + c*c) % max_ind
+        if all(table[i, :] == 0):
+            return np.array(found)
         else:
-            found[found_size] = i
-            found_size += 1
-    
-    return found[:found_size]
-
-    
-    # found = []
-    # for c in itertools.count():
-    #     c = np.uint64(c)
-    #     i = (hash_index + c*c) % max_ind
-    #     if all(table[i, :] == 0):
-    #         return np.array(found)
-    #     else:
-    #         found.append(i)
+            found.append(i)
 
 def _key_to_index(key, bin_factor, max_index):
     """Get hash index for a given key. Can be length p list or n by p array."""
@@ -1474,16 +1459,14 @@ class Tetra3():
             hash_code_list = np.array(list(code for code in itertools.product(*hash_code_range)))
             # Make sure we have unique ascending codes
             hash_code_list = np.sort(hash_code_list, axis=1)
-            # hash_code_list = np.unique(hash_code_list, axis=0) #TODO: Maybe replace with Pandas function to improve performance `df = pd.DataFrame(hash_code_list), unique_hash_codes = df.drop_duplicates().to_numpy()`
-            df = pd.DataFrame(hash_code_list)
-            hash_code_list = df.drop_duplicates.to_numpy()
+            hash_code_list = np.unique(hash_code_list, axis=0)
 
             # Calculate hash index for each
             hash_indices = _key_to_index(hash_code_list, p_bins, self.pattern_catalog.shape[0])
             # iterate over hash code space
             i = 1
             for hash_index in hash_indices:
-                hash_match_inds = _get_table_index_from_hash(hash_index, self.pattern_catalog)
+                hash_match_inds = _get_table_index_from_hash(hash_index, self.pattern_catalog) #TODO: reduce runtime here 
                 if len(hash_match_inds) == 0:
                     continue
 
@@ -1518,7 +1501,7 @@ class Tetra3():
                     image_pattern_edge_ratio_max > all_catalog_edge_ratios), axis=1)).flatten()
 
                 # Go through each matching pattern and calculate further
-                for index in valid_patterns:
+                for index in valid_patterns:                                    #TODO: return the valid index to test in the next frame
                     # Estimate coarse distortion from the pattern
                     if distortion is None or isinstance(distortion, Number):
                         # Distortion is known, set variables and estimate FOV
@@ -1719,7 +1702,8 @@ class Tetra3():
                                          'Prob': prob_mismatch*num_patterns,
                                          'epoch_equinox': self._db_props['epoch_equinox'],
                                          'epoch_proper_motion': self._db_props['epoch_proper_motion'],
-                                         'T_solve': t_solve}
+                                         'T_solve': t_solve,
+                                         'Index': index}
 
                         # If we were given target pixel(s), calculate their ra/dec
                         if target_pixel is not None:
